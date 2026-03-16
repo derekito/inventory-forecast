@@ -1,0 +1,9 @@
+Your real environment variables are in a hidden file that Cursor doesn't show in the folder:
+
+  .env.local
+
+To open it: press Cmd+P (Mac) or Ctrl+P (Windows), type:  .env.local  and press Enter.
+
+Put your Shopify API secret key in that file as SHOPIFY_ACCESS_TOKEN=...
+
+You can delete this EDIT_ENV_HERE.txt file after you've updated .env.local.
