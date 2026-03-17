@@ -159,7 +159,7 @@ export async function fetchProducts(options?: { vendor?: string }): Promise<Shop
   `;
 
   while (out.length < MAX_PRODUCTS) {
-    const data = await graphql<ProductsQueryResponse>(productsQuery, {
+    const data: ProductsQueryResponse = await graphql<ProductsQueryResponse>(productsQuery, {
       first: Math.min(PRODUCTS_PAGE_SIZE, MAX_PRODUCTS - out.length),
       query: queryString,
       ...(cursor ? { cursor } : {}),
