@@ -83,6 +83,38 @@ function productSearchQuery(vendor?: string): string {
   return `${base} vendor:${escaped}`;
 }
 
+type ProductsQueryResponse = {
+  products: {
+    edges: Array<{
+      cursor: string;
+      node: {
+        id: string;
+        title: string;
+        vendor: string;
+        productType?: string | null;
+        media?: {
+          edges: Array<{
+            node?: {
+              image?: { url: string };
+            };
+          }>;
+        };
+        variants: {
+          edges: Array<{
+            node: {
+              id: string;
+              sku: string | null;
+              inventoryItem: { id: string } | null;
+              title: string;
+            };
+          }>;
+        };
+      };
+    }>;
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
 export async function fetchProducts(options?: { vendor?: string }): Promise<ShopifyProduct[]> {
   const out: ShopifyProduct[] = [];
   let cursor: string | null = null;
@@ -127,37 +159,7 @@ export async function fetchProducts(options?: { vendor?: string }): Promise<Shop
   `;
 
   while (out.length < MAX_PRODUCTS) {
-    const data = await graphql<{
-      products: {
-        edges: Array<{
-          cursor: string;
-          node: {
-            id: string;
-            title: string;
-            vendor: string;
-            productType?: string | null;
-            media?: {
-              edges: Array<{
-                node?: {
-                  image?: { url: string };
-                };
-              }>;
-            };
-            variants: {
-              edges: Array<{
-                node: {
-                  id: string;
-                  sku: string | null;
-                  inventoryItem: { id: string } | null;
-                  title: string;
-                };
-              }>;
-            };
-          };
-        }>;
-        pageInfo: { hasNextPage: boolean };
-      };
-    }>(productsQuery, {
+    const data = await graphql<ProductsQueryResponse>(productsQuery, {
       first: Math.min(PRODUCTS_PAGE_SIZE, MAX_PRODUCTS - out.length),
       query: queryString,
       ...(cursor ? { cursor } : {}),
