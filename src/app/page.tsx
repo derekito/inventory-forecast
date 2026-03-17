@@ -94,7 +94,7 @@ function statusClass(s: ProductRow["status"]): string {
   return "border-gray-200 bg-gray-100 text-gray-700";
 }
 
-function escapeCsvCell(value: string): string {
+function escapeCsvCell(value: string | number): string {
   const s = String(value ?? "");
   if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
