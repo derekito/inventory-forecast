@@ -80,9 +80,9 @@ export async function GET(request: Request) {
     }
 
     const variantIds = new Set<number>([
-      ...variantToProduct.keys(),
-      ...currentByVariant.keys(),
-      ...lastYearByVariant.keys(),
+      ...Array.from(variantToProduct.keys()),
+      ...Array.from(currentByVariant.keys()),
+      ...Array.from(lastYearByVariant.keys()),
     ]);
 
     const rows: NakedArmorRow[] = [];
