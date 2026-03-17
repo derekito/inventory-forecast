@@ -79,11 +79,10 @@ export async function GET(request: Request) {
       lastYearByVariant.set(line.variantId, cur);
     }
 
-    const variantIds = new Set<number>([
-      ...Array.from(variantToProduct.keys()),
-      ...Array.from(currentByVariant.keys()),
-      ...Array.from(lastYearByVariant.keys()),
-    ]);
+    const variantIds = new Set<number>();
+    for (const id of Array.from(variantToProduct.keys())) variantIds.add(id);
+    for (const id of Array.from(currentByVariant.keys())) variantIds.add(id);
+    for (const id of Array.from(lastYearByVariant.keys())) variantIds.add(id);
 
     const rows: NakedArmorRow[] = [];
     for (const variantId of variantIds) {
