@@ -115,6 +115,91 @@ type ProductsQueryResponse = {
   };
 };
 
+type OrdersForSalesByBrandResponse = {
+  orders: {
+    edges: Array<{
+      cursor: string;
+      node: {
+        lineItems: {
+          edges: Array<{
+            node: {
+              vendor: string | null;
+              quantity: number;
+              originalUnitPriceSet?: { shopMoney?: { amount?: string } } | null;
+            };
+          }>;
+        };
+      };
+    }>;
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
+type OrdersForVariantLinesResponse = {
+  orders: {
+    edges: Array<{
+      cursor: string;
+      node: {
+        createdAt: string;
+        lineItems: {
+          edges: Array<{
+            node: {
+              variant: { id: string } | null;
+              vendor: string | null;
+              quantity: number;
+              originalUnitPriceSet?: { shopMoney?: { amount?: string } } | null;
+            };
+          }>;
+        };
+      };
+    }>;
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
+type InventoryLevelsResponse = {
+  nodes: Array<{
+    id: string;
+    inventoryLevels?: {
+      edges: Array<{ node: { quantities: Array<{ quantity: number }> } }>;
+    };
+  } | null>;
+};
+
+type VendorProductsResponse = {
+  products: {
+    edges: Array<{
+      cursor: string;
+      node: { vendor: string };
+    }>;
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
+type OrdersSinceResponse = {
+  orders: {
+    edges: Array<{
+      cursor: string;
+      node: {
+        id: string;
+        createdAt: string;
+        lineItems: {
+          edges: Array<{
+            node: {
+              variant: { id: string } | null;
+              product: { id: string } | null;
+              quantity: number;
+              sku: string | null;
+              name: string;
+            };
+          }>;
+        };
+      };
+    }>;
+    pageInfo: { hasNextPage: boolean };
+  };
+};
+
 export async function fetchProducts(options?: { vendor?: string }): Promise<ShopifyProduct[]> {
   const out: ShopifyProduct[] = [];
   let cursor: string | null = null;
@@ -244,25 +329,7 @@ export async function fetchOrdersForSalesByBrand(since: string): Promise<OrderLi
   `;
 
   while (true) {
-    const data = await graphql<{
-      orders: {
-        edges: Array<{
-          cursor: string;
-          node: {
-            lineItems: {
-              edges: Array<{
-                node: {
-                  vendor: string | null;
-                  quantity: number;
-                  originalUnitPriceSet?: { shopMoney?: { amount?: string } } | null;
-                };
-              }>;
-            };
-          };
-        }>;
-        pageInfo: { hasNextPage: boolean };
-      };
-    }>(ordersQuery, {
+    const data: OrdersForSalesByBrandResponse = await graphql<OrdersForSalesByBrandResponse>(ordersQuery, {
       cursor: cursor ?? undefined,
       query: `created_at:>=${sinceDate}`,
     });
@@ -322,27 +389,7 @@ export async function fetchOrderLinesWithVariant(since: string, until?: string):
   `;
 
   while (true) {
-    const data = await graphql<{
-      orders: {
-        edges: Array<{
-          cursor: string;
-          node: {
-            createdAt: string;
-            lineItems: {
-              edges: Array<{
-                node: {
-                  variant: { id: string } | null;
-                  vendor: string | null;
-                  quantity: number;
-                  originalUnitPriceSet?: { shopMoney?: { amount?: string } } | null;
-                };
-              }>;
-            };
-          };
-        }>;
-        pageInfo: { hasNextPage: boolean };
-      };
-    }>(ordersQuery, {
+    const data: OrdersForVariantLinesResponse = await graphql<OrdersForVariantLinesResponse>(ordersQuery, {
       cursor: cursor ?? undefined,
       query: `created_at:>=${sinceDate}`,
     });
@@ -397,14 +444,7 @@ export async function fetchInventoryLevels(inventoryItemIds: number[]): Promise<
         }
       }
     `;
-    const data = await graphql<{
-      nodes: Array<{
-        id: string;
-        inventoryLevels?: {
-          edges: Array<{ node: { quantities: Array<{ quantity: number }> } }>;
-        };
-      } | null>;
-    }>(query, { ids });
+    const data: InventoryLevelsResponse = await graphql<InventoryLevelsResponse>(query, { ids });
 
     data.nodes?.forEach((n, j) => {
       if (!n || !("inventoryLevels" in n)) return;
@@ -440,15 +480,7 @@ export async function fetchAllVendors(): Promise<string[]> {
   `;
 
   while (true) {
-    const data = await graphql<{
-      products: {
-        edges: Array<{
-          cursor: string;
-          node: { vendor: string };
-        }>;
-        pageInfo: { hasNextPage: boolean };
-      };
-    }>(query, {
+    const data: VendorProductsResponse = await graphql<VendorProductsResponse>(query, {
       first: VENDORS_PAGE_SIZE,
       ...(cursor ? { cursor } : {}),
     });
@@ -499,29 +531,7 @@ export async function fetchOrdersSince(since: string): Promise<ShopifyOrder[]> {
   `;
 
   while (true) {
-    const data = await graphql<{
-      orders: {
-        edges: Array<{
-          cursor: string;
-          node: {
-            id: string;
-            createdAt: string;
-            lineItems: {
-              edges: Array<{
-                node: {
-                  variant: { id: string } | null;
-                  product: { id: string } | null;
-                  quantity: number;
-                  sku: string | null;
-                  name: string;
-                };
-              }>;
-            };
-          };
-        }>;
-        pageInfo: { hasNextPage: boolean };
-      };
-    }>(ordersQuery, {
+    const data: OrdersSinceResponse = await graphql<OrdersSinceResponse>(ordersQuery, {
       cursor: cursor ?? undefined,
       query: `created_at:>=${sinceDate}`,
     });
