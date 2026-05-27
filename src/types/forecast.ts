@@ -21,6 +21,7 @@ export type ProductRow = {
   title: string;
   vendor: string;
   sku: string;
+  productType: string;
   salesPerMonth: number;
   inventory: number;
   enoughForDays: number;

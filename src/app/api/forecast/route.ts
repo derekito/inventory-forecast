@@ -127,6 +127,7 @@ export async function GET(request: Request) {
           title: p.title,
           vendor: p.vendor,
           sku: v.sku ?? "",
+          productType: p.productType ?? "",
           salesPerMonth,
           inventory: inv,
           enoughForDays,

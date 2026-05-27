@@ -128,6 +128,7 @@ export default function Home() {
   const [nakedArmorProductTypeFilter, setNakedArmorProductTypeFilter] = useState<string>("");
   const [productTableSalesSort, setProductTableSalesSort] = useState<"asc" | "desc">("desc");
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [productTypeFilter, setProductTypeFilter] = useState("");
 
   const loadVendors = useCallback(async () => {
     try {
@@ -175,8 +176,10 @@ export default function Home() {
       setUntrackedIds(new Set());
       setSkipIds(new Set());
       setHasSixMonthsSnapshotData(false);
+      setProductTypeFilter("");
       return;
     }
+    setProductTypeFilter("");
     setUntrackedIds(loadUntrackedIds(vendor));
     setSkipIds(loadSkipIds(vendor));
     loadForecast();
@@ -240,15 +243,22 @@ export default function Home() {
   }, [statusTab, loadNakedArmor]);
 
   const searchLower = search.trim().toLowerCase();
-  const filtered =
+  const searchFiltered =
     searchLower === ""
       ? rows
       : rows.filter(
           (row) =>
             row.title.toLowerCase().includes(searchLower) ||
             row.vendor.toLowerCase().includes(searchLower) ||
-            row.sku.toLowerCase().includes(searchLower)
+            row.sku.toLowerCase().includes(searchLower) ||
+            row.productType.toLowerCase().includes(searchLower)
         );
+  const productTypes = Array.from(
+    new Set(rows.map((r) => r.productType).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+  const filtered = productTypeFilter
+    ? searchFiltered.filter((row) => row.productType === productTypeFilter)
+    : searchFiltered;
 
   const excludeUntracked = (list: ProductRow[]) =>
     list.filter((row) => !untrackedIds.has(row.id));
@@ -366,7 +376,11 @@ export default function Home() {
   };
 
   const exportTableToCsv = useCallback(() => {
-    const dataToExport = statusFiltered.length > 0 ? statusFiltered : filtered;
+    const baseData = statusFiltered.length > 0 ? statusFiltered : filtered;
+    const dataToExport =
+      selectedIds.size > 0
+        ? baseData.filter((row) => selectedIds.has(row.id))
+        : baseData;
     const sorted = [...dataToExport].sort((a, b) =>
       productTableSalesSort === "desc"
         ? b.salesPerMonth - a.salesPerMonth
@@ -375,6 +389,7 @@ export default function Home() {
     const headers = [
       "Product",
       "Vendor",
+      "Product type",
       "SKU",
       "Sales per month",
       "Trend",
@@ -390,6 +405,7 @@ export default function Home() {
     const rows = sorted.map((row) => [
       row.title,
       row.vendor,
+      row.productType ?? "",
       row.sku ?? "",
       row.salesPerMonth.toFixed(1),
       trendStr(row.trend),
@@ -408,11 +424,14 @@ export default function Home() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `inventory-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download =
+      selectedIds.size > 0
+        ? `inventory-export-selected-${new Date().toISOString().slice(0, 10)}.csv`
+        : `inventory-export-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     setExportMenuOpen(false);
-  }, [statusFiltered, filtered, productTableSalesSort]);
+  }, [statusFiltered, filtered, productTableSalesSort, selectedIds]);
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6">
@@ -441,7 +460,9 @@ export default function Home() {
                   onClick={exportTableToCsv}
                   className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
                 >
-                  Download as CSV
+                  {selectedIds.size > 0
+                    ? `Download selected (${selectedIds.size}) as CSV`
+                    : "Download as CSV"}
                 </button>
               </div>
             </>
@@ -512,6 +533,26 @@ export default function Home() {
             ))}
           </select>
         </div>
+        {vendor && (
+          <div className="flex items-center gap-2">
+            <label htmlFor="product-type" className="text-sm text-gray-600">
+              Product type:
+            </label>
+            <select
+              id="product-type"
+              value={productTypeFilter}
+              onChange={(e) => setProductTypeFilter(e.target.value)}
+              className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700"
+            >
+              <option value="">All types</option>
+              {productTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -925,6 +966,7 @@ export default function Home() {
                   />
                 </th>
                 <th className="px-3 py-3 font-medium text-gray-700">Product</th>
+                <th className="px-3 py-3 font-medium text-gray-700">Product type</th>
                 <th className="px-3 py-3 font-medium text-gray-700">
                   <button
                     type="button"
@@ -994,6 +1036,7 @@ export default function Home() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-3 py-2 text-gray-600">{row.productType || "—"}</td>
                   <td className="px-3 py-2 text-gray-600">
                     {row.salesPerMonth.toFixed(1)} / month
                   </td>
