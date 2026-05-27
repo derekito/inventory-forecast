@@ -5,6 +5,8 @@ import type { ProductRow, StatusFilter, DateWindow } from "@/types/forecast";
 
 const UNTRACKED_STORAGE_KEY = "inventory-forecast-untracked";
 const SKIP_LIST_STORAGE_KEY = "inventory-forecast-skip";
+/** Brand dropdown value to load products from the entire catalog. */
+const ALL_BRANDS = "__all__";
 
 function loadUntrackedIds(vendor: string): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -143,7 +145,8 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ window: windowMonths, vendor });
+      const params = new URLSearchParams({ window: windowMonths });
+      if (vendor !== ALL_BRANDS) params.set("vendor", vendor);
       const r = await fetch(`/api/forecast?${params}`);
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
@@ -501,6 +504,7 @@ export default function Home() {
             className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700"
           >
             <option value="">Choose a brand…</option>
+            <option value={ALL_BRANDS}>All brands</option>
             {vendors.map((v) => (
               <option key={v} value={v}>
                 {v}
@@ -858,9 +862,11 @@ export default function Home() {
         <>
           {statusTab === "no_sales" && (
             <p className="mb-3 text-sm text-gray-500">
-              {hasSixMonthsSnapshotData
-                ? "No Sales: zero sales in the look-back period and in stock for the full 6 months (never went out of stock). Set Look back to 6 months."
-                : "No Sales: zero sales in the look-back period and currently in stock. Set Look back to 6 months. Once we have ~6 months of daily snapshots, we’ll restrict this to items that were in stock the entire time."}
+              {vendor === ALL_BRANDS
+                ? "No Sales across all brands: zero sales in the look-back period and currently in stock."
+                : hasSixMonthsSnapshotData
+                  ? "No Sales: zero sales in the look-back period and in stock for the full 6 months (never went out of stock). Set Look back to 6 months."
+                  : "No Sales: zero sales in the look-back period and currently in stock. Set Look back to 6 months. Once we have ~6 months of daily snapshots, we’ll restrict this to items that were in stock the entire time."}
             </p>
           )}
           {statusTab === "skip_list" && (
