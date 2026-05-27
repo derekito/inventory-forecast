@@ -247,15 +247,18 @@ export default function Home() {
             row.sku.toLowerCase().includes(searchLower)
         );
 
-  const orderNowRows = (list: typeof filtered) =>
-    list.filter(
+  const excludeUntracked = (list: ProductRow[]) =>
+    list.filter((row) => !untrackedIds.has(row.id));
+
+  const orderNowRows = (list: ProductRow[]) =>
+    excludeUntracked(list).filter(
       (row) =>
         (row.status === "order_now" || row.status === "out_of_stock") &&
         row.salesPerMonth > 0
     );
 
-  const noSalesRows = (list: typeof filtered) =>
-    list.filter(
+  const noSalesRows = (list: ProductRow[]) =>
+    excludeUntracked(list).filter(
       (row) =>
         row.salesPerMonth === 0 &&
         row.inventory > 0 &&
@@ -264,12 +267,12 @@ export default function Home() {
 
   const isSuggestedSkip = (row: ProductRow) =>
     row.status === "overstocked" && row.salesPerMonth === 0 && row.inventory > 0;
-  const skipListRows = (list: typeof filtered) =>
-    list.filter((row) => skipIds.has(row.id) || isSuggestedSkip(row));
+  const skipListRows = (list: ProductRow[]) =>
+    excludeUntracked(list).filter((row) => skipIds.has(row.id) || isSuggestedSkip(row));
 
   const statusFiltered =
     statusTab === "all"
-      ? filtered
+      ? excludeUntracked(filtered)
       : statusTab === "order_now"
         ? orderNowRows(filtered)
         : statusTab === "no_sales"
@@ -278,13 +281,13 @@ export default function Home() {
             ? filtered.filter((row) => untrackedIds.has(row.id))
             : statusTab === "skip_list"
               ? skipListRows(filtered)
-              : filtered.filter((row) => row.status === statusTab);
+              : excludeUntracked(filtered).filter((row) => row.status === statusTab);
 
   const orderNowCount = orderNowRows(rows).length;
-  const outOfStockCount = rows.filter((r) => r.status === "out_of_stock").length;
-  const overstockedCount = rows.filter((r) => r.status === "overstocked").length;
+  const outOfStockCount = excludeUntracked(rows).filter((r) => r.status === "out_of_stock").length;
+  const overstockedCount = excludeUntracked(rows).filter((r) => r.status === "overstocked").length;
   const noSalesCount = noSalesRows(rows).length;
-  const snoozedCount = rows.filter((r) => r.status === "snoozed").length;
+  const snoozedCount = excludeUntracked(rows).filter((r) => r.status === "snoozed").length;
   const untrackedCount = rows.filter((r) => untrackedIds.has(r.id)).length;
   const skipListCount = skipListRows(rows).length;
 
@@ -293,18 +296,20 @@ export default function Home() {
       if (!vendor) return;
       const toToggle = ids ?? statusFiltered.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
       if (toToggle.length === 0) return;
-      const next = new Set(untrackedIds);
-      const allAlreadyUntracked = toToggle.every((id) => next.has(id));
-      if (allAlreadyUntracked && (ids != null || statusTab === "untracked")) {
-        toToggle.forEach((id) => next.delete(id));
-      } else {
-        toToggle.forEach((id) => next.add(id));
-      }
-      setUntrackedIds(next);
+      setUntrackedIds((prev) => {
+        const next = new Set(prev);
+        const allAlreadyUntracked = toToggle.every((id) => next.has(id));
+        if (allAlreadyUntracked && (ids != null || statusTab === "untracked")) {
+          toToggle.forEach((id) => next.delete(id));
+        } else {
+          toToggle.forEach((id) => next.add(id));
+        }
+        saveUntrackedIds(vendor, next);
+        return next;
+      });
       if (ids == null) setSelectedIds(new Set());
-      saveUntrackedIds(vendor, next);
     },
-    [vendor, statusTab, selectedIds, untrackedIds, statusFiltered]
+    [vendor, statusTab, selectedIds, statusFiltered]
   );
 
   const toggleSelected = useCallback((rowId: string) => {
@@ -344,7 +349,7 @@ export default function Home() {
   );
 
   const tabCounts: Record<StatusFilter, number> = {
-    all: rows.length,
+    all: excludeUntracked(rows).length,
     order_now: orderNowCount,
     out_of_stock: outOfStockCount,
     overstocked: overstockedCount,
